@@ -1,0 +1,13 @@
+---
+platform: linux
+image: docker:///java#8-jdk
+
+inputs:
+- name: java-buildpack-metric-writer
+
+run:
+  path: java-buildpack-metric-writer/ci/deploy.sh
+
+params:
+  ARTIFACTORY_USERNAME:
+  ARTIFACTORY_PASSWORD:
