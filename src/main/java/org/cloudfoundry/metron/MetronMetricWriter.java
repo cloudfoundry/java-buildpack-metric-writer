@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package org.cloudfoundry.metricwriter;
+package org.cloudfoundry.metron;
 
 import com.google.protobuf.MessageLite;
 import org.cloudfoundry.dropsonde.events.MetricFactory;
+import org.springframework.boot.actuate.autoconfigure.ExportMetricWriter;
 import org.springframework.boot.actuate.metrics.Metric;
 import org.springframework.boot.actuate.metrics.writer.Delta;
 import org.springframework.boot.actuate.metrics.writer.MetricWriter;
@@ -34,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
+@ExportMetricWriter
 final class MetronMetricWriter extends Endpoint implements MetricWriter {
 
     private final AtomicReference<Optional<Session>> session = new AtomicReference<>(Optional.empty());

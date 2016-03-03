@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.cloudfoundry.metricwriter;
+package org.cloudfoundry.metron;
 
 import com.google.protobuf.MessageLite;
 import org.cloudfoundry.dropsonde.events.MetricFactory;
