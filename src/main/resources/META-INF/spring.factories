@@ -1,1 +1,1 @@
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=org.cloudfoundry.metron.MetronMetricWriterConfiguration
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=org.cloudfoundry.metron.MetronMetricWriterAutoConfiguration
