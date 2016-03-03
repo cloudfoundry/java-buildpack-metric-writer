@@ -30,7 +30,7 @@ import java.net.URI;
 
 @Configuration
 @ConditionalOnClass({ContainerProvider.class, MetricWriter.class})
-@ConditionalOnProperty("cloudfoundry.metron.uri")
+@ConditionalOnProperty(prefix = "cloudfoundry.metron", name = "uri")
 class MetronMetricWriterAutoConfiguration {
 
     @Bean
