@@ -34,7 +34,7 @@ import java.net.URI;
 class MetronMetricWriterAutoConfiguration {
 
     @Bean
-    MetronMetricWriter metronMetricWriter(@Value("${cloudfoundry.metron.uri") URI uri) throws IOException, DeploymentException {
+    MetronMetricWriter metronMetricWriter(@Value("${cloudfoundry.metron.uri}") URI uri) throws IOException, DeploymentException {
         return new MetronMetricWriter(uri);
     }
 
