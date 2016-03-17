@@ -117,7 +117,7 @@ public final class MetronMetricWriterTest {
         when(this.session.getAsyncRemote()).thenReturn(this.async);
     }
 
-    private static void verify(Async async, Message message) {
+    private static void verify(Async async, Message<?, ?> message) {
         Mockito.verify(async).sendBinary(ByteBuffer.wrap(message.encode()));
     }
 
