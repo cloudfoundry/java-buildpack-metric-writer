@@ -16,8 +16,9 @@
 
 package org.cloudfoundry.metron;
 
-import com.google.protobuf.MessageLite;
-import org.cloudfoundry.dropsonde.events.MetricFactory;
+import com.squareup.wire.Message;
+import org.cloudfoundry.dropsonde.events.CounterEvent;
+import org.cloudfoundry.dropsonde.events.ValueMetric;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -45,15 +46,15 @@ public final class MetronMetricWriterTest {
         this.metricWriter.onOpen(this.session, null);
         this.metricWriter.increment(new Delta<>("test-name", Long.MIN_VALUE));
 
-        verify(this.async, MetricFactory.CounterEvent.newBuilder()
-            .setName("test-name")
-            .setDelta(Long.MIN_VALUE)
+        verify(this.async, new CounterEvent.Builder()
+            .name("test-name")
+            .delta(Long.MIN_VALUE)
             .build());
     }
 
     @Test
     public void incrementNoSession() {
-        this.metricWriter.increment(new Delta<Number>("test-name", Long.MIN_VALUE));
+        this.metricWriter.increment(new Delta<>("test-name", Long.MIN_VALUE));
 
         verifyZeroInteractions(this.async);
     }
@@ -78,10 +79,10 @@ public final class MetronMetricWriterTest {
         this.metricWriter.onOpen(this.session, null);
         this.metricWriter.reset("test-name");
 
-        verify(this.async, MetricFactory.ValueMetric.newBuilder()
-            .setName("test-name")
-            .setValue(0)
-            .setUnit("")
+        verify(this.async, new ValueMetric.Builder()
+            .name("test-name")
+            .value(0.0)
+            .unit("")
             .build());
     }
 
@@ -95,12 +96,12 @@ public final class MetronMetricWriterTest {
     @Test
     public void set() {
         this.metricWriter.onOpen(this.session, null);
-        this.metricWriter.set(new Metric<>("test-name", Long.MIN_VALUE));
+        this.metricWriter.set(new Metric<>("test-name", Double.MIN_VALUE));
 
-        verify(this.async, MetricFactory.ValueMetric.newBuilder()
-            .setName("test-name")
-            .setValue(Long.MIN_VALUE)
-            .setUnit("")
+        verify(this.async, new ValueMetric.Builder()
+            .name("test-name")
+            .value(Double.MIN_VALUE)
+            .unit("")
             .build());
     }
 
@@ -116,8 +117,8 @@ public final class MetronMetricWriterTest {
         when(this.session.getAsyncRemote()).thenReturn(this.async);
     }
 
-    private static void verify(Async async, MessageLite message) {
-        Mockito.verify(async).sendBinary(ByteBuffer.wrap(message.toByteArray()));
+    private static void verify(Async async, Message message) {
+        Mockito.verify(async).sendBinary(ByteBuffer.wrap(message.encode()));
     }
 
 }
