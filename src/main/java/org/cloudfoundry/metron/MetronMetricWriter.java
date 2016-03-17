@@ -16,8 +16,9 @@
 
 package org.cloudfoundry.metron;
 
-import com.google.protobuf.MessageLite;
-import org.cloudfoundry.dropsonde.events.MetricFactory;
+import com.squareup.wire.Message;
+import org.cloudfoundry.dropsonde.events.CounterEvent;
+import org.cloudfoundry.dropsonde.events.ValueMetric;
 import org.springframework.boot.actuate.autoconfigure.ExportMetricWriter;
 import org.springframework.boot.actuate.metrics.Metric;
 import org.springframework.boot.actuate.metrics.writer.Delta;
@@ -49,9 +50,9 @@ final class MetronMetricWriter extends Endpoint implements MetricWriter {
 
     @Override
     public void increment(Delta<?> delta) {
-        send(this.session, MetricFactory.CounterEvent.newBuilder()
-            .setName(delta.getName())
-            .setDelta(delta.getValue().longValue())
+        send(this.session, new CounterEvent.Builder()
+            .name(delta.getName())
+            .delta(delta.getValue().longValue())
             .build());
     }
 
@@ -72,25 +73,25 @@ final class MetronMetricWriter extends Endpoint implements MetricWriter {
 
     @Override
     public void reset(String metricName) {
-        send(this.session, MetricFactory.ValueMetric.newBuilder()
-            .setName(metricName)
-            .setValue(0)
-            .setUnit("")
+        send(this.session, new ValueMetric.Builder()
+            .name(metricName)
+            .value(0.0)
+            .unit("")
             .build());
     }
 
     @Override
     public void set(Metric<?> value) {
-        send(this.session, MetricFactory.ValueMetric.newBuilder()
-            .setName(value.getName())
-            .setValue(value.getValue().longValue())
-            .setUnit("")
+        send(this.session, new ValueMetric.Builder()
+            .name(value.getName())
+            .value(value.getValue().doubleValue())
+            .unit("")
             .build());
     }
 
-    private static void send(AtomicReference<Optional<Session>> sessionReference, MessageLite message) {
+    private static void send(AtomicReference<Optional<Session>> sessionReference, Message<?, ?> message) {
         sessionReference.get()
-            .ifPresent(session -> session.getAsyncRemote().sendBinary(ByteBuffer.wrap(message.toByteArray())));
+            .ifPresent(session -> session.getAsyncRemote().sendBinary(ByteBuffer.wrap(message.encode())));
     }
 
 }

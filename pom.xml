@@ -38,14 +38,15 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <protobuf.version>2.6.1</protobuf.version>
         <websocket-client-api.version>1.1</websocket-client-api.version>
+        <wire.version>2.1.1</wire.version>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java</artifactId>
+            <groupId>com.squareup.wire</groupId>
+            <artifactId>wire-runtime</artifactId>
+            <version>${wire.version}</version>
         </dependency>
         <dependency>
             <groupId>javax.websocket</groupId>
@@ -67,6 +68,26 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>com.squareup.wire</groupId>
+                <artifactId>wire-maven-plugin</artifactId>
+                <version>2.1.1</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate-sources</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <protoFiles>
+                        <param>metric.proto</param>
+                        <param>uuid.proto</param>
+                    </protoFiles>
+                    <protoSourceDirectory>${project.basedir}/vendor/dropsonde-protocol/events</protoSourceDirectory>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
