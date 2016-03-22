@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/cloudfoundry-metric-writer.iml" filepath="$PROJECT_DIR$/cloudfoundry-metric-writer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/java-buildpack-metric-writer.iml" filepath="$PROJECT_DIR$/java-buildpack-metric-writer.iml" />
     </modules>
   </component>
 </project>

@@ -30,7 +30,7 @@
     </parent>
 
     <groupId>org.cloudfoundry</groupId>
-    <artifactId>cloudfoundry-metric-writer</artifactId>
+    <artifactId>java-buildpack-metric-writer</artifactId>
     <name>Cloud Foundry Spring Boot Metric Writer</name>
     <version>1.0.0.BUILD-SNAPSHOT</version>
     <packaging>jar</packaging>
