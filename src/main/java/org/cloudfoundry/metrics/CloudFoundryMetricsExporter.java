@@ -72,7 +72,7 @@ final class CloudFoundryMetricsExporter implements Runnable {
         try {
             this.restOperations.postForEntity(this.endpoint, request, Void.class);
             this.logger.debug("Sent Spring Boot metrics to PCF Metrics");
-        } catch (HttpClientErrorException e) {
+        } catch (Exception e) {
             this.logger.error("Failed to send Spring Boot metrics to PCF Metrics", e);
             // TODO: Handle too many requests
         }
