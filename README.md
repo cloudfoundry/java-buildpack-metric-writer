@@ -2,7 +2,7 @@
 This project provides a [Spring Boot `MetricWriter`][m] that writes metric updates to a Metron endpoint.
 
 ## Development
-The project depends on Java 8.  To build from source and install to your local Maven cache, run the following:
+The project depends on Java 7.  To build from source and install to your local Maven cache, run the following:
 
 ```shell
 $ ./mvnw clean install
