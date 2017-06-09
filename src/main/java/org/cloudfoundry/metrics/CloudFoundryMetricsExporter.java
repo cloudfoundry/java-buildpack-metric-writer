@@ -21,24 +21,32 @@ import org.apache.commons.logging.LogFactory;
 import org.springframework.boot.actuate.endpoint.PublicMetrics;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestOperations;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.net.URI;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 final class CloudFoundryMetricsExporter implements Runnable {
 
+    private static final Random RANDOM = new Random();
+
+    private static final String RETRY_AFTER = "X-RateLimit-Retry-After";
+
+    private static final int RETRY_SKEW = 5_000;
+
     private final Log logger = LogFactory.getLog(CloudFoundryMetricsExporter.class);
+
+    private final MetricCache cache = new MetricCache();
 
     private final Collection<PublicMetrics> metricsCollections;
 
@@ -49,6 +57,8 @@ final class CloudFoundryMetricsExporter implements Runnable {
     private final ScheduledExecutorService scheduledExecutorService;
 
     private ScheduledFuture<?> execution;
+
+    private volatile Long retryAfter;
 
     CloudFoundryMetricsExporter(Collection<PublicMetrics> metricsCollections, CloudFoundryMetricsProperties properties, RestOperations restOperations,
                                 ScheduledExecutorService scheduledExecutorService) {
@@ -61,23 +71,43 @@ final class CloudFoundryMetricsExporter implements Runnable {
 
     @Override
     public void run() {
-        this.logger.debug("Sending Spring Boot metrics to PCF Metrics");
+        if (this.retryAfter != null && this.retryAfter > System.currentTimeMillis()) {
+            this.logger.debug("Skipping sending Spring Boot metrics to Metrics Forwarder service");
+            return;
+        }
 
-        List<Metric> metrics = getMetrics(this.metricsCollections);
-        HttpEntity<Payload> request = getRequest(getPayload(this.properties.getApplicationId(), this.properties.getInstanceId(), this.properties.getInstanceIndex(), metrics));
+        this.logger.debug("Sending Spring Boot metrics to Metrics Forwarder service");
+
+        List<Metric> metrics = getMetrics();
 
         try {
-            this.restOperations.postForEntity(this.properties.getEndpoint(), request, Void.class);
-            this.logger.debug("Sent Spring Boot metrics to PCF Metrics");
+            this.restOperations.postForEntity(this.properties.getEndpoint(), getRequest(metrics), Void.class);
+            this.logger.debug("Sent Spring Boot metrics to Metrics Forwarder service");
+            this.retryAfter = null;
         } catch (Exception e) {
-            this.logger.error("Failed to send Spring Boot metrics to PCF Metrics", e);
-            // TODO: Handle too many requests
+            if (e instanceof HttpStatusCodeException) {
+                HttpStatus statusCode = ((HttpStatusCodeException) e).getStatusCode();
+
+                if (HttpStatus.UNPROCESSABLE_ENTITY == statusCode) {
+                    this.logger.error("Failed to send Spring Boot metrics to Metrics Forwarder service due to unprocessable payload.  Discarding metrics.", e);
+                } else if (HttpStatus.PAYLOAD_TOO_LARGE == statusCode) {
+                    this.logger.error("Failed to send Spring Boot metrics to Metrics Forwarder service due to rate limiting.  Discarding metrics.", e);
+                } else if (HttpStatus.TOO_MANY_REQUESTS == statusCode) {
+                    this.logger.error("Failed to send Spring Boot metrics to Metrics Forwarder service due to rate limiting.  Caching metrics.", e);
+                    this.cache.addAll(metrics);
+                } else {
+                    this.logger.error("Failed to send Spring Boot metrics to Metrics Forwarder service. Caching metrics.", e);
+                    this.cache.addAll(metrics);
+                }
+            }
+
+            this.retryAfter = getRetryAfter(e);
         }
     }
 
     @PostConstruct
     public void start() {
-        this.execution = this.scheduledExecutorService.scheduleAtFixedRate(this, 0, this.properties.getRate(), TimeUnit.MILLISECONDS);
+        this.execution = this.scheduledExecutorService.scheduleAtFixedRate(this, this.properties.getRate(), this.properties.getRate(), TimeUnit.MILLISECONDS);
     }
 
     @PreDestroy
@@ -91,13 +121,13 @@ final class CloudFoundryMetricsExporter implements Runnable {
 
     @PostConstruct
     void announce() {
-        this.logger.info("Exporting Spring Boot metrics to PCF Metrics");
+        this.logger.info("Exporting Spring Boot metrics to Metrics Forwarder service");
     }
 
-    private static List<Metric> getMetrics(Collection<PublicMetrics> metricsCollections) {
-        List<Metric> metrics = new ArrayList<>();
+    private List<Metric> getMetrics() {
+        List<Metric> metrics = this.cache.getAndClear();
 
-        for (PublicMetrics metricsCollection : metricsCollections) {
+        for (PublicMetrics metricsCollection : this.metricsCollections) {
             for (org.springframework.boot.actuate.metrics.Metric<?> metric : metricsCollection.metrics()) {
                 metrics.add(new Metric(metric));
             }
@@ -106,17 +136,29 @@ final class CloudFoundryMetricsExporter implements Runnable {
         return metrics;
     }
 
-    private static Payload getPayload(String applicationId, String instanceId, String instanceIndex, List<Metric> metrics) {
-        Instance instance = new Instance(instanceId, instanceIndex, metrics);
-        Application application = new Application(applicationId, Collections.singletonList(instance));
+    private Payload getPayload(List<Metric> metrics) {
+        Instance instance = new Instance(this.properties.getInstanceId(), this.properties.getInstanceIndex(), metrics);
+        Application application = new Application(this.properties.getApplicationId(), Collections.singletonList(instance));
         return new Payload(Collections.singletonList(application));
     }
 
-    private HttpEntity<Payload> getRequest(Payload payload) {
+    private HttpEntity<Payload> getRequest(List<Metric> metrics) {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.AUTHORIZATION, this.properties.getAccessToken());
 
-        return new HttpEntity<>(payload, headers);
+        return new HttpEntity<>(getPayload(metrics), headers);
+    }
+
+    private Long getRetryAfter(Exception candidate) {
+        if (candidate instanceof RestClientResponseException) {
+            String retryAfter = ((RestClientResponseException) candidate).getResponseHeaders().getFirst(RETRY_AFTER);
+
+            if (retryAfter != null) {
+                return System.currentTimeMillis() + Long.parseLong(retryAfter) + RANDOM.nextInt(RETRY_SKEW);
+            }
+        }
+
+        return null;
     }
 
 }

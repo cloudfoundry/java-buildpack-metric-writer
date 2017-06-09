@@ -20,6 +20,7 @@ import org.junit.Test;
 import org.springframework.boot.actuate.endpoint.PublicMetrics;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
@@ -29,13 +30,18 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.RETURNS_SMART_NULLS;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 public final class CloudFoundryMetricsExporterTest {
@@ -62,6 +68,11 @@ public final class CloudFoundryMetricsExporterTest {
     private final CloudFoundryMetricsExporter exporter = new CloudFoundryMetricsExporter(this.metricsCollections, this.properties, this.restTemplate, this.scheduledExecutorService);
 
     @Test
+    public void announce() {
+        this.exporter.announce();
+    }
+
+    @Test
     public void empty() throws InterruptedException, IOException {
         this.mockServer
             .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
@@ -77,7 +88,136 @@ public final class CloudFoundryMetricsExporterTest {
         this.exporter.run();
 
         this.mockServer.verify();
+    }
 
+    @Test
+    public void otherFailure() {
+        this.metricsCollections.add(new StubPublicMetrics(getMetric(0)));
+
+        this.mockServer
+            .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
+            .andExpect(jsonPath("$.applications[0].instances[0].metrics").isNotEmpty())
+            .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
+
+        this.exporter.run();
+
+        this.mockServer.verify();
+
+        this.mockServer.reset();
+        this.metricsCollections.clear();
+
+        this.mockServer
+            .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
+            .andExpect(jsonPath("$.applications[0].instances[0].metrics").isNotEmpty())
+            .andRespond(withSuccess());
+
+        this.exporter.run();
+
+        this.mockServer.verify();
+    }
+
+    @Test
+    public void payloadTooLarge() {
+        this.metricsCollections.add(new StubPublicMetrics(getMetric(0)));
+
+        this.mockServer
+            .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
+            .andExpect(jsonPath("$.applications[0].instances[0].metrics").isNotEmpty())
+            .andRespond(withStatus(HttpStatus.PAYLOAD_TOO_LARGE));
+
+        this.exporter.run();
+
+        this.mockServer.verify();
+
+        this.mockServer.reset();
+        this.metricsCollections.clear();
+
+        this.mockServer
+            .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
+            .andExpect(jsonPath("$.applications[0].instances[0].metrics").isEmpty())
+            .andRespond(withSuccess());
+
+        this.exporter.run();
+
+        this.mockServer.verify();
+    }
+
+    @Test
+    public void start() {
+        this.exporter.start();
+
+        verify(this.scheduledExecutorService).scheduleAtFixedRate(this.exporter, this.properties.getRate(), this.properties.getRate(), TimeUnit.MILLISECONDS);
+    }
+
+    @Test
+    public void stop() {
+        this.exporter.stop();
+
+        verify(this.scheduledExecutorService).shutdownNow();
+    }
+
+    @Test
+    public void stopWithScheduledExecution() {
+        ScheduledFuture<?> execution = mock(ScheduledFuture.class);
+        doReturn(execution).when(this.scheduledExecutorService).scheduleAtFixedRate(this.exporter, this.properties.getRate(), this.properties.getRate(), TimeUnit.MILLISECONDS);
+
+        this.exporter.start();
+        this.exporter.stop();
+
+        verify(execution).cancel(true);
+        verify(this.scheduledExecutorService).shutdownNow();
+    }
+
+    @Test
+    public void tooManyRequests() {
+        this.metricsCollections.add(new StubPublicMetrics(getMetric(0)));
+
+        this.mockServer
+            .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
+            .andExpect(jsonPath("$.applications[0].instances[0].metrics").isNotEmpty())
+            .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+
+        this.exporter.run();
+
+        this.mockServer.verify();
+
+        this.mockServer.reset();
+        this.metricsCollections.clear();
+
+        this.mockServer
+            .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
+            .andExpect(jsonPath("$.applications[0].instances[0].metrics").isNotEmpty())
+            .andRespond(withSuccess());
+
+        this.exporter.run();
+
+        this.mockServer.verify();
+    }
+
+    @Test
+    public void unprocessableEntity() {
+        this.metricsCollections.add(new StubPublicMetrics(getMetric(0)));
+
+        this.mockServer
+            .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
+            .andExpect(jsonPath("$.applications[0].instances[0].metrics").isNotEmpty())
+            .andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY));
+
+        this.exporter.run();
+
+        this.mockServer.verify();
+
+        this.mockServer.reset();
+        this.metricsCollections.clear();
+
+        this.mockServer
+            .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
+            .andExpect(jsonPath("$.applications[0].instances[0].metrics").isEmpty())
+            .andRespond(withSuccess());
+
+        this.exporter.run();
+
+        this.mockServer.verify();
     }
 
     @Test
