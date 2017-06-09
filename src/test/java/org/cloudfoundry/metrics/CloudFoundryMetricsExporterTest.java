@@ -50,7 +50,8 @@ public final class CloudFoundryMetricsExporterTest {
 
     private final List<PublicMetrics> metricsCollections = new ArrayList<>();
 
-    private final CloudFoundryMetricsProperties properties = new CloudFoundryMetricsProperties(ACCESS_TOKEN, APPLICATION_ID, "https://localhost", INSTANCE_ID, INSTANCE_INDEX, 60_000, false);
+    private final CloudFoundryMetricsProperties properties = new CloudFoundryMetricsProperties(ACCESS_TOKEN, APPLICATION_ID, "https://localhost/v1/metrics", INSTANCE_ID, INSTANCE_INDEX, 60_000,
+        false);
 
     private final RestTemplate restTemplate = new RestTemplate();
 

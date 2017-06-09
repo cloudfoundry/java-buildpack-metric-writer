@@ -40,8 +40,6 @@ final class CloudFoundryMetricsExporter implements Runnable {
 
     private final Log logger = LogFactory.getLog(CloudFoundryMetricsExporter.class);
 
-    private final URI endpoint;
-
     private final Collection<PublicMetrics> metricsCollections;
 
     private final CloudFoundryMetricsProperties properties;
@@ -55,7 +53,6 @@ final class CloudFoundryMetricsExporter implements Runnable {
     CloudFoundryMetricsExporter(Collection<PublicMetrics> metricsCollections, CloudFoundryMetricsProperties properties, RestOperations restOperations,
                                 ScheduledExecutorService scheduledExecutorService) {
 
-        this.endpoint = getEndpoint(properties.getEndpoint());
         this.properties = properties;
         this.metricsCollections = metricsCollections;
         this.restOperations = restOperations;
@@ -70,7 +67,7 @@ final class CloudFoundryMetricsExporter implements Runnable {
         HttpEntity<Payload> request = getRequest(getPayload(this.properties.getApplicationId(), this.properties.getInstanceId(), this.properties.getInstanceIndex(), metrics));
 
         try {
-            this.restOperations.postForEntity(this.endpoint, request, Void.class);
+            this.restOperations.postForEntity(this.properties.getEndpoint(), request, Void.class);
             this.logger.debug("Sent Spring Boot metrics to PCF Metrics");
         } catch (Exception e) {
             this.logger.error("Failed to send Spring Boot metrics to PCF Metrics", e);
@@ -95,13 +92,6 @@ final class CloudFoundryMetricsExporter implements Runnable {
     @PostConstruct
     void announce() {
         this.logger.info("Exporting Spring Boot metrics to PCF Metrics");
-    }
-
-    private static URI getEndpoint(String endpoint) {
-        return UriComponentsBuilder.fromUriString(endpoint)
-            .pathSegment("v1", "metrics")
-            .build()
-            .toUri();
     }
 
     private static List<Metric> getMetrics(Collection<PublicMetrics> metricsCollections) {
