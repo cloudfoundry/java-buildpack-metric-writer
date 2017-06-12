@@ -32,7 +32,7 @@
     <groupId>org.cloudfoundry</groupId>
     <artifactId>java-buildpack-metric-writer</artifactId>
     <name>Java Buildpack Metric Writer</name>
-    <version>1.4.0.BUILD-SNAPSHOT</version>
+    <version>1.4.0.RELEASE</version>
     <packaging>jar</packaging>
     <url>https://github.com/cloudfoundry/java-buildpack-metric-writer</url>
 
