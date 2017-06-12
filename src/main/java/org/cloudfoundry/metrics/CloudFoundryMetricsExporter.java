@@ -31,18 +31,13 @@ import javax.annotation.PreDestroy;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 final class CloudFoundryMetricsExporter implements Runnable {
 
-    private static final Random RANDOM = new Random();
-
     private static final String RETRY_AFTER = "X-RateLimit-Retry-After";
-
-    private static final int RETRY_SKEW = 5_000;
 
     private final Log logger = LogFactory.getLog(CloudFoundryMetricsExporter.class);
 
@@ -154,7 +149,7 @@ final class CloudFoundryMetricsExporter implements Runnable {
             String retryAfter = ((RestClientResponseException) candidate).getResponseHeaders().getFirst(RETRY_AFTER);
 
             if (retryAfter != null) {
-                return System.currentTimeMillis() + Long.parseLong(retryAfter) + RANDOM.nextInt(RETRY_SKEW);
+                return System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(Long.parseLong(retryAfter));
             }
         }
 
