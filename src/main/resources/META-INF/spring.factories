@@ -1,1 +1,1 @@
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=org.cloudfoundry.metrics.CloudFoundryMetricsAutoConfiguration
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=org.cloudfoundry.metrics.CloudFoundryMetricWriterAutoConfiguration

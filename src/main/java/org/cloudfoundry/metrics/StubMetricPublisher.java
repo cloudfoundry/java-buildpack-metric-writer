@@ -16,21 +16,19 @@
 
 package org.cloudfoundry.metrics;
 
-import com.fasterxml.jackson.annotation.JsonValue;
+import java.util.List;
 
-enum Type {
+final class StubMetricPublisher implements MetricPublisher {
 
-    GAUGE("gauge");
+    private List<Metric> metrics;
 
-    private final String value;
-
-    Type(String value) {
-        this.value = value;
+    @Override
+    public void publish(List<Metric> metrics) {
+        this.metrics = metrics;
     }
 
-    @JsonValue
-    String getValue() {
-        return this.value;
+    List<Metric> getMetrics() {
+        return this.metrics;
     }
 
 }

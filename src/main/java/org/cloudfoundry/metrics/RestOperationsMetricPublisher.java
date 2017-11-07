@@ -18,7 +18,6 @@ package org.cloudfoundry.metrics;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.springframework.boot.actuate.endpoint.PublicMetrics;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -27,45 +26,31 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestOperations;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-final class CloudFoundryMetricsExporter implements Runnable {
+final class RestOperationsMetricPublisher implements MetricPublisher {
 
     private static final String RETRY_AFTER = "X-RateLimit-Retry-After";
 
-    private final Log logger = LogFactory.getLog(CloudFoundryMetricsExporter.class);
+    private final Log logger = LogFactory.getLog(SpringBootMetricWriter.class);
 
     private final MetricCache cache = new MetricCache();
 
-    private final Collection<PublicMetrics> metricsCollections;
-
-    private final CloudFoundryMetricsProperties properties;
+    private final CloudFoundryMetricWriterProperties properties;
 
     private final RestOperations restOperations;
 
-    private final ScheduledExecutorService scheduledExecutorService;
-
-    private ScheduledFuture<?> execution;
-
     private volatile Long retryAfter;
 
-    CloudFoundryMetricsExporter(Collection<PublicMetrics> metricsCollections, CloudFoundryMetricsProperties properties, RestOperations restOperations,
-                                ScheduledExecutorService scheduledExecutorService) {
-
+    RestOperationsMetricPublisher(CloudFoundryMetricWriterProperties properties, RestOperations restOperations) {
         this.properties = properties;
-        this.metricsCollections = metricsCollections;
         this.restOperations = restOperations;
-        this.scheduledExecutorService = scheduledExecutorService;
     }
 
     @Override
-    public void run() {
+    public void publish(List<Metric> metrics) {
         if (this.retryAfter != null && this.retryAfter > System.currentTimeMillis()) {
             this.logger.debug("Skipping sending Spring Boot metrics to Metrics Forwarder service");
             return;
@@ -73,10 +58,8 @@ final class CloudFoundryMetricsExporter implements Runnable {
 
         this.logger.debug("Sending Spring Boot metrics to Metrics Forwarder service");
 
-        List<Metric> metrics = getMetrics();
-
         try {
-            this.restOperations.postForEntity(this.properties.getEndpoint(), getRequest(metrics), Void.class);
+            this.restOperations.postForEntity(this.properties.getEndpoint(), getRequest(getAllMetrics(metrics)), Void.class);
             this.logger.debug("Sent Spring Boot metrics to Metrics Forwarder service");
             this.retryAfter = null;
         } catch (Exception e) {
@@ -101,34 +84,14 @@ final class CloudFoundryMetricsExporter implements Runnable {
     }
 
     @PostConstruct
-    public void start() {
-        this.execution = this.scheduledExecutorService.scheduleAtFixedRate(this, this.properties.getRate(), this.properties.getRate(), TimeUnit.MILLISECONDS);
-    }
-
-    @PreDestroy
-    public void stop() {
-        if (this.execution != null) {
-            this.execution.cancel(true);
-        }
-
-        this.scheduledExecutorService.shutdownNow();
-    }
-
-    @PostConstruct
     void announce() {
         this.logger.info("Exporting Spring Boot metrics to Metrics Forwarder service");
     }
 
-    private List<Metric> getMetrics() {
-        List<Metric> metrics = this.cache.getAndClear();
-
-        for (PublicMetrics metricsCollection : this.metricsCollections) {
-            for (org.springframework.boot.actuate.metrics.Metric<?> metric : metricsCollection.metrics()) {
-                metrics.add(new Metric(metric));
-            }
-        }
-
-        return metrics;
+    private List<Metric> getAllMetrics(List<Metric> newMetrics) {
+        List<Metric> allMetrics = this.cache.getAndClear();
+        allMetrics.addAll(newMetrics);
+        return allMetrics;
     }
 
     private Payload getPayload(List<Metric> metrics) {

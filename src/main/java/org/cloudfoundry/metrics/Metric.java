@@ -19,11 +19,14 @@ package org.cloudfoundry.metrics;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.util.Assert;
 
+import java.util.Map;
 import java.util.Objects;
 
 final class Metric {
 
     private final String name;
+
+    private final Map<String, String> tags;
 
     private final Long timestamp;
 
@@ -33,17 +36,15 @@ final class Metric {
 
     private final Number value;
 
-    Metric(org.springframework.boot.actuate.metrics.Metric<?> metric) {
-        this(metric.getName(), metric.getTimestamp().getTime(), Type.GAUGE, null, metric.getValue());
-    }
-
-    Metric(String name, Long timestamp, Type type, String unit, Number value) {
+    Metric(String name, Map<String, String> tags, Long timestamp, Type type, String unit, Number value) {
         Assert.notNull(name, "name must not be null");
+        Assert.notNull(tags, "tags must not be null");
         Assert.notNull(timestamp, "timestamp must not be null");
         Assert.notNull(type, "type must not be null");
         Assert.notNull(value, "value must not be null");
 
         this.name = name;
+        this.tags = tags;
         this.timestamp = timestamp;
         this.type = type;
         this.unit = unit;
@@ -56,6 +57,7 @@ final class Metric {
         if (o == null || getClass() != o.getClass()) return false;
         Metric metric = (Metric) o;
         return Objects.equals(name, metric.name) &&
+            Objects.equals(tags, metric.tags) &&
             Objects.equals(timestamp, metric.timestamp) &&
             type == metric.type &&
             Objects.equals(unit, metric.unit) &&
@@ -64,13 +66,14 @@ final class Metric {
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, timestamp, type, unit, value);
+        return Objects.hash(name, tags, timestamp, type, unit, value);
     }
 
     @Override
     public String toString() {
         return "Metric{" +
             "name='" + name + '\'' +
+            ", tags=" + tags +
             ", timestamp=" + timestamp +
             ", type=" + type +
             ", unit='" + unit + '\'' +
@@ -81,6 +84,11 @@ final class Metric {
     @JsonProperty("name")
     String getName() {
         return this.name;
+    }
+
+    @JsonProperty("tags")
+    Map<String, String> getTags() {
+        return this.tags;
     }
 
     @JsonProperty("timestamp")

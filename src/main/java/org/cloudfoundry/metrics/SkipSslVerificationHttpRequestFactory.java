@@ -30,7 +30,7 @@ import java.net.HttpURLConnection;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 
-class SkipSslVerificationHttpRequestFactory extends SimpleClientHttpRequestFactory {
+final class SkipSslVerificationHttpRequestFactory extends SimpleClientHttpRequestFactory {
 
     @Override
     protected void prepareConnection(HttpURLConnection connection, String httpMethod) throws IOException {
