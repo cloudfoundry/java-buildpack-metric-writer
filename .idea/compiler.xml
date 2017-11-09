@@ -12,7 +12,7 @@
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="cloudfoundry-metric-writer" target="1.8" />
-      <module name="java-buildpack-metric-writer" target="1.7" />
+      <module name="java-buildpack-metric-writer" target="1.8" />
     </bytecodeTargetLevel>
   </component>
 </project>

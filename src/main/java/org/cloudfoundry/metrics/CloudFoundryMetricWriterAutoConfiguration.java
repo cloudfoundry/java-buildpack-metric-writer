@@ -16,6 +16,8 @@
 
 package org.cloudfoundry.metrics;
 
+import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.actuate.endpoint.PublicMetrics;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnCloudPlatform;
@@ -24,49 +26,46 @@ import org.springframework.boot.cloud.CloudPlatform;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.web.client.RestOperations;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collection;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
 
-@ConditionalOnClass({RestTemplate.class, PublicMetrics.class})
+@ConditionalOnClass(RestTemplate.class)
 @ConditionalOnCloudPlatform(CloudPlatform.CLOUD_FOUNDRY)
 @ConditionalOnProperty(prefix = "cloudfoundry.metrics", name = {"accessToken", "applicationId", "instanceId", "instanceIndex", "endpoint"})
 @Configuration
-@EnableConfigurationProperties(CloudFoundryMetricsProperties.class)
-class CloudFoundryMetricsAutoConfiguration {
+@EnableConfigurationProperties(CloudFoundryMetricWriterProperties.class)
+class CloudFoundryMetricWriterAutoConfiguration {
 
     @Bean
-    CloudFoundryMetricsExporter cloudFoundryMetricWriter(CloudFoundryMetricsProperties properties,
-                                                         Collection<PublicMetrics> publicMetrics) {
-
-        return new CloudFoundryMetricsExporter(publicMetrics, properties, restTemplate(properties), scheduledExecutorService());
+    @Lazy
+    RestOperationsMetricPublisher metricPublisher(CloudFoundryMetricWriterProperties properties) {
+        RestOperations restOperations = properties.isSkipSslValidation() ? new RestTemplate(new SkipSslVerificationHttpRequestFactory()) : new RestTemplate();
+        return new RestOperationsMetricPublisher(properties, restOperations);
     }
 
-    private RestTemplate restTemplate(CloudFoundryMetricsProperties properties) {
-        if (properties.isSkipSslValidation()) {
-            return new RestTemplate(new SkipSslVerificationHttpRequestFactory());
+    @ConditionalOnClass(MeterRegistry.class)
+    @Configuration
+    static class MicrometerMetricWriterAutoConfiguration {
+
+        @Bean
+        MicrometerMetricWriter metricWriter(MetricPublisher metricPublisher, CloudFoundryMetricWriterProperties properties) {
+            return new MicrometerMetricWriter(Clock.SYSTEM, metricPublisher, properties);
         }
 
-        return new RestTemplate();
     }
 
-    private ScheduledExecutorService scheduledExecutorService() {
-        return Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
+    @ConditionalOnClass(PublicMetrics.class)
+    @Configuration
+    static class SpringBootMetricWriterAutoConfiguration {
 
-            private final AtomicInteger counter = new AtomicInteger();
+        @Bean
+        SpringBootMetricWriter metricWriter(Collection<PublicMetrics> metricsCollections, MetricPublisher metricPublisher, CloudFoundryMetricWriterProperties properties) {
+            return new SpringBootMetricWriter(metricsCollections, metricPublisher, properties);
+        }
 
-            @Override
-            public Thread newThread(Runnable r) {
-                Thread thread = new Thread(r, String.format("cloudfoundry-metrics-exporter-%d", this.counter.getAndIncrement()));
-                thread.setDaemon(true);
-                return thread;
-            }
-
-        });
     }
 
 }

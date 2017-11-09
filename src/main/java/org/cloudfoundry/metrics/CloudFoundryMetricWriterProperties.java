@@ -19,7 +19,7 @@ package org.cloudfoundry.metrics;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "cloudfoundry.metrics")
-final class CloudFoundryMetricsProperties {
+final class CloudFoundryMetricWriterProperties {
 
     private String accessToken;
 
@@ -35,10 +35,10 @@ final class CloudFoundryMetricsProperties {
 
     private boolean skipSslValidation = false;
 
-    CloudFoundryMetricsProperties() {
+    CloudFoundryMetricWriterProperties() {
     }
 
-    CloudFoundryMetricsProperties(String accessToken, String applicationId, String endpoint, String instanceId, String instanceIndex, long rate, boolean skipSslValidation) {
+    CloudFoundryMetricWriterProperties(String accessToken, String applicationId, String endpoint, String instanceId, String instanceIndex, long rate, boolean skipSslValidation) {
         this.accessToken = accessToken;
         this.applicationId = applicationId;
         this.endpoint = endpoint;

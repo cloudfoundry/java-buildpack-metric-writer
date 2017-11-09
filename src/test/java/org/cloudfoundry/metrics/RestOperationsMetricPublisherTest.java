@@ -17,7 +17,6 @@
 package org.cloudfoundry.metrics;
 
 import org.junit.Test;
-import org.springframework.boot.actuate.endpoint.PublicMetrics;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -26,17 +25,10 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
-import java.util.List;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
-import static org.mockito.Mockito.RETURNS_SMART_NULLS;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -44,7 +36,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-public final class CloudFoundryMetricsExporterTest {
+public final class RestOperationsMetricPublisherTest {
 
     private static final String ACCESS_TOKEN = "test-access-token";
 
@@ -54,22 +46,17 @@ public final class CloudFoundryMetricsExporterTest {
 
     private static final String INSTANCE_INDEX = "test-instance-index";
 
-    private final List<PublicMetrics> metricsCollections = new ArrayList<>();
-
-    private final CloudFoundryMetricsProperties properties = new CloudFoundryMetricsProperties(ACCESS_TOKEN, APPLICATION_ID, "https://localhost/v1/metrics", INSTANCE_ID, INSTANCE_INDEX, 60_000,
-        false);
+    private final CloudFoundryMetricWriterProperties properties = new CloudFoundryMetricWriterProperties(ACCESS_TOKEN, APPLICATION_ID, "https://localhost/v1/metrics", INSTANCE_ID, INSTANCE_INDEX, -1, false);
 
     private final RestTemplate restTemplate = new RestTemplate();
 
     private final MockRestServiceServer mockServer = MockRestServiceServer.bindTo(this.restTemplate).build();
 
-    private final ScheduledExecutorService scheduledExecutorService = mock(ScheduledExecutorService.class, RETURNS_SMART_NULLS);
-
-    private final CloudFoundryMetricsExporter exporter = new CloudFoundryMetricsExporter(this.metricsCollections, this.properties, this.restTemplate, this.scheduledExecutorService);
+    private final RestOperationsMetricPublisher metricPublisher = new RestOperationsMetricPublisher(this.properties, this.restTemplate);
 
     @Test
     public void announce() {
-        this.exporter.announce();
+        this.metricPublisher.announce();
     }
 
     @Test
@@ -85,146 +72,105 @@ public final class CloudFoundryMetricsExporterTest {
             .andExpect(jsonPath("$.applications[0].instances[0].metrics").isEmpty())
             .andRespond(withSuccess());
 
-        this.exporter.run();
+        this.metricPublisher.publish(Collections.emptyList());
 
         this.mockServer.verify();
     }
 
     @Test
     public void otherFailure() {
-        this.metricsCollections.add(new StubPublicMetrics(getMetric(0)));
-
         this.mockServer
             .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
             .andExpect(jsonPath("$.applications[0].instances[0].metrics").isNotEmpty())
             .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
 
-        this.exporter.run();
+        this.metricPublisher.publish(Collections.singletonList(getMetric(0)));
 
         this.mockServer.verify();
 
         this.mockServer.reset();
-        this.metricsCollections.clear();
 
         this.mockServer
             .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
             .andExpect(jsonPath("$.applications[0].instances[0].metrics").isNotEmpty())
             .andRespond(withSuccess());
 
-        this.exporter.run();
+        this.metricPublisher.publish(Collections.emptyList());
 
         this.mockServer.verify();
     }
 
     @Test
     public void payloadTooLarge() {
-        this.metricsCollections.add(new StubPublicMetrics(getMetric(0)));
-
         this.mockServer
             .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
             .andExpect(jsonPath("$.applications[0].instances[0].metrics").isNotEmpty())
             .andRespond(withStatus(HttpStatus.PAYLOAD_TOO_LARGE));
 
-        this.exporter.run();
+        this.metricPublisher.publish(Collections.singletonList(getMetric(0)));
 
         this.mockServer.verify();
 
         this.mockServer.reset();
-        this.metricsCollections.clear();
 
         this.mockServer
             .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
             .andExpect(jsonPath("$.applications[0].instances[0].metrics").isEmpty())
             .andRespond(withSuccess());
 
-        this.exporter.run();
+        this.metricPublisher.publish(Collections.emptyList());
 
         this.mockServer.verify();
     }
 
     @Test
-    public void start() {
-        this.exporter.start();
-
-        verify(this.scheduledExecutorService).scheduleAtFixedRate(this.exporter, this.properties.getRate(), this.properties.getRate(), TimeUnit.MILLISECONDS);
-    }
-
-    @Test
-    public void stop() {
-        this.exporter.stop();
-
-        verify(this.scheduledExecutorService).shutdownNow();
-    }
-
-    @Test
-    public void stopWithScheduledExecution() {
-        ScheduledFuture<?> execution = mock(ScheduledFuture.class);
-        doReturn(execution).when(this.scheduledExecutorService).scheduleAtFixedRate(this.exporter, this.properties.getRate(), this.properties.getRate(), TimeUnit.MILLISECONDS);
-
-        this.exporter.start();
-        this.exporter.stop();
-
-        verify(execution).cancel(true);
-        verify(this.scheduledExecutorService).shutdownNow();
-    }
-
-    @Test
     public void tooManyRequests() {
-        this.metricsCollections.add(new StubPublicMetrics(getMetric(0)));
-
         this.mockServer
             .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
             .andExpect(jsonPath("$.applications[0].instances[0].metrics").isNotEmpty())
             .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
 
-        this.exporter.run();
+        this.metricPublisher.publish(Collections.singletonList(getMetric(0)));
 
         this.mockServer.verify();
 
         this.mockServer.reset();
-        this.metricsCollections.clear();
 
         this.mockServer
             .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
             .andExpect(jsonPath("$.applications[0].instances[0].metrics").isNotEmpty())
             .andRespond(withSuccess());
 
-        this.exporter.run();
+        this.metricPublisher.publish(Collections.emptyList());
 
         this.mockServer.verify();
     }
 
     @Test
     public void unprocessableEntity() {
-        this.metricsCollections.add(new StubPublicMetrics(getMetric(0)));
-
         this.mockServer
             .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
             .andExpect(jsonPath("$.applications[0].instances[0].metrics").isNotEmpty())
             .andRespond(withStatus(HttpStatus.UNPROCESSABLE_ENTITY));
 
-        this.exporter.run();
+        this.metricPublisher.publish(Collections.singletonList(getMetric(0)));
 
         this.mockServer.verify();
 
         this.mockServer.reset();
-        this.metricsCollections.clear();
 
         this.mockServer
             .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
             .andExpect(jsonPath("$.applications[0].instances[0].metrics").isEmpty())
             .andRespond(withSuccess());
 
-        this.exporter.run();
+        this.metricPublisher.publish(Collections.emptyList());
 
         this.mockServer.verify();
     }
 
     @Test
     public void values() throws InterruptedException, IOException {
-        this.metricsCollections.add(new StubPublicMetrics(getMetric(0), getMetric(1)));
-        this.metricsCollections.add(new StubPublicMetrics(getMetric(2), getMetric(3)));
-
         this.mockServer
             .expect(method(HttpMethod.POST)).andExpect(requestTo("https://localhost/v1/metrics"))
             .andExpect(header(HttpHeaders.AUTHORIZATION, ACCESS_TOKEN))
@@ -255,13 +201,13 @@ public final class CloudFoundryMetricsExporterTest {
             .andExpect(jsonPath("$.applications[0].instances[0].metrics[3].unit").doesNotExist())
             .andRespond(withSuccess());
 
-        this.exporter.run();
+        this.metricPublisher.publish(Arrays.asList(getMetric(0), getMetric(1), getMetric(2), getMetric(3)));
 
         this.mockServer.verify();
     }
 
-    private static org.springframework.boot.actuate.metrics.Metric<?> getMetric(int index) {
-        return new org.springframework.boot.actuate.metrics.Metric<>(getName(index), index, new Date(index));
+    private static Metric getMetric(int index) {
+        return new Metric(getName(index), Collections.emptyMap(), new Date(index).getTime(), Type.GAUGE, null, index);
     }
 
     private static String getName(int index) {

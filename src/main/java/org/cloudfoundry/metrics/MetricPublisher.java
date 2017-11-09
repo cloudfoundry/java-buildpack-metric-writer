@@ -16,21 +16,15 @@
 
 package org.cloudfoundry.metrics;
 
-import com.fasterxml.jackson.annotation.JsonValue;
+import java.util.List;
 
-enum Type {
+interface MetricPublisher {
 
-    GAUGE("gauge");
-
-    private final String value;
-
-    Type(String value) {
-        this.value = value;
-    }
-
-    @JsonValue
-    String getValue() {
-        return this.value;
-    }
+    /**
+     * Publishes a collection of metrics to the Cloud Foundry Metrics Forwarder
+     *
+     * @param metrics the metrics to publish
+     */
+    void publish(List<Metric> metrics);
 
 }
