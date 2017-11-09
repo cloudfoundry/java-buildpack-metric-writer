@@ -50,7 +50,7 @@ class CloudFoundryMetricWriterAutoConfiguration {
     @Configuration
     static class MicrometerMetricWriterAutoConfiguration {
 
-        @Bean
+        @Bean(initMethod = "start", destroyMethod = "stop")
         MicrometerMetricWriter metricWriter(MetricPublisher metricPublisher, CloudFoundryMetricWriterProperties properties) {
             return new MicrometerMetricWriter(Clock.SYSTEM, metricPublisher, properties);
         }
