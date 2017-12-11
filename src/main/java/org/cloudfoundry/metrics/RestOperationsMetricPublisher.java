@@ -34,7 +34,7 @@ final class RestOperationsMetricPublisher implements MetricPublisher {
 
     private static final String RETRY_AFTER = "X-RateLimit-Retry-After";
 
-    private final Log logger = LogFactory.getLog(SpringBootMetricWriter.class);
+    private final Log logger = LogFactory.getLog(RestOperationsMetricPublisher.class);
 
     private final MetricCache cache = new MetricCache();
 
@@ -91,6 +91,11 @@ final class RestOperationsMetricPublisher implements MetricPublisher {
     private List<Metric> getAllMetrics(List<Metric> newMetrics) {
         List<Metric> allMetrics = this.cache.getAndClear();
         allMetrics.addAll(newMetrics);
+
+        if (this.logger.isDebugEnabled()) {
+            this.logger.debug(String.format("Sending metrics: %s", allMetrics));
+        }
+
         return allMetrics;
     }
 
