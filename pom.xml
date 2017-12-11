@@ -26,7 +26,7 @@
     <parent>
         <groupId>io.spring.platform</groupId>
         <artifactId>platform-bom</artifactId>
-        <version>Brussels-SR5</version>
+        <version>Brussels-SR6</version>
     </parent>
 
     <groupId>org.cloudfoundry</groupId>
@@ -37,7 +37,7 @@
     <url>https://github.com/cloudfoundry/java-buildpack-metric-writer</url>
 
     <properties>
-        <micrometer.version>1.0.0-rc.3</micrometer.version>
+        <micrometer.version>1.0.0-rc.5</micrometer.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
