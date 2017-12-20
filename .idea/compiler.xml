@@ -8,11 +8,19 @@
         <outputRelativeToContentRoot value="true" />
         <module name="cloudfoundry-metric-writer" />
         <module name="java-buildpack-metric-writer" />
+        <module name="java-buildpack-metric-writer-boot-1" />
+        <module name="java-buildpack-metric-writer-boot-2" />
+        <module name="java-buildpack-metric-writer-common" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="cloudfoundry-metric-writer" target="1.8" />
       <module name="java-buildpack-metric-writer" target="1.8" />
+      <module name="java-buildpack-metric-writer (1)" target="1.5" />
+      <module name="java-buildpack-metric-writer-boot-1" target="1.8" />
+      <module name="java-buildpack-metric-writer-boot-2" target="1.8" />
+      <module name="java-buildpack-metric-writer-common" target="1.8" />
+      <module name="java-buildpack-metric-writer-parent" target="1.5" />
     </bytecodeTargetLevel>
   </component>
 </project>
