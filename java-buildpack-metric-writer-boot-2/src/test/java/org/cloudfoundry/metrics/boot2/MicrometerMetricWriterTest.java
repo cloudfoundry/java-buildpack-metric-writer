@@ -16,17 +16,17 @@
 
 package org.cloudfoundry.metrics.boot2;
 
-import io.micrometer.core.instrument.ImmutableTag;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.MockClock;
+import io.micrometer.core.instrument.config.MeterFilter;
+import io.micrometer.core.instrument.histogram.HistogramConfig;
 import org.cloudfoundry.metrics.CloudFoundryMetricWriterProperties;
 import org.cloudfoundry.metrics.Metric;
 import org.cloudfoundry.metrics.Type;
 import org.junit.Test;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,32 +36,74 @@ public final class MicrometerMetricWriterTest {
 
     private final StubMetricPublisher metricPublisher = new StubMetricPublisher();
 
+    private final MicrometerMetricWriter metricWriter;
+
     private final CloudFoundryMetricWriterProperties properties = new CloudFoundryMetricWriterProperties(null, null, null, null, null, 60_000, false);
 
-    private final MicrometerMetricWriter metricWriter = new MicrometerMetricWriter(this.clock, this.metricPublisher, this.properties);
+    public MicrometerMetricWriterTest() {
+        this.metricWriter = new MicrometerMetricWriter(this.clock, this.metricPublisher, this.properties);
+        this.metricWriter.config().meterFilter(new MeterFilter() {
+
+            @Override
+            public HistogramConfig configure(Meter.Id mappedId, HistogramConfig config) {
+                return HistogramConfig.builder()
+                    .percentiles(0.50)
+                    .build()
+                    .merge(config);
+            }
+
+        });
+    }
 
     @Test
-    public void publish() {
-        addMetric(0, this.metricWriter);
-        addMetric(1, this.metricWriter);
-        addMetric(2, this.metricWriter);
-        addMetric(3, this.metricWriter);
+    public void publishMeter() {
+        addDistributionSummary(0, this.metricWriter);
+        addFunctionTimer(1, this.metricWriter);
+        addTimer(2, this.metricWriter);
+        addMeter(3, this.metricWriter);
 
         this.metricWriter.publish();
 
-        assertThat(this.metricPublisher.getMetrics()).contains(getMetric(0), getMetric(1), getMetric(2), getMetric(3));
+        assertThat(this.metricPublisher.getMetrics()).contains(
+            getMetric(0, "count"),
+            getMetric(0, "max"),
+            getMetric(0, "mean"),
+            getMetric(0, "totalTime"),
+            getMetric(0, "50percentile"),
+            getMetric(1, "count", "milliseconds"),
+            getMetric(1, "mean", "milliseconds"),
+            getMetric(1, "totalTime", "milliseconds"),
+            getMetric(2, "count"),
+            getMetric(2, "max"),
+            getMetric(2, "mean"),
+            getMetric(2, "totalTime"),
+            getMetric(2, "50percentile"),
+            getMetric(3, "value")
+        );
     }
 
-    private static void addMetric(int index, MeterRegistry meterRegistry) {
-        meterRegistry.gauge(getName(index), Collections.singleton(new ImmutableTag(getTagKey(index), getTagValue(index))), index);
+    private static void addDistributionSummary(int index, MeterRegistry meterRegistry) {
+        meterRegistry.summary(getName(index));
     }
 
-    private static Metric getMetric(int index) {
-        Map<String, String> tags = new HashMap<>(2);
-        tags.put("statistic", "value");
-        tags.put(getTagKey(index), getTagValue(index));
+    private static void addFunctionTimer(int index, MeterRegistry meterRegistry) {
+        meterRegistry.more().timer(getName(index), Collections.emptySet(), null, null, null, null);
+    }
 
-        return new Metric(getName(index), tags, 0L, Type.GAUGE, null, (double) index);
+    private static void addMeter(int index, MeterRegistry meterRegistry) {
+        meterRegistry.gauge(getName(index), 0);
+    }
+
+    private static void addTimer(int index, MeterRegistry meterRegistry) {
+        meterRegistry.timer(getName(index));
+    }
+
+    private static Metric getMetric(int index, String statistic) {
+        return getMetric(index, statistic, null);
+    }
+
+    private static Metric getMetric(int index, String statistic, String unit) {
+        return new Metric(getName(index), Collections.singletonMap("statistic", statistic), 0L, Type.GAUGE, unit, 0.0);
     }
 
     private static String getName(int index) {

@@ -17,9 +17,13 @@
 package org.cloudfoundry.metrics.boot2;
 
 import io.micrometer.core.instrument.Clock;
-import io.micrometer.core.instrument.Measurement;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.FunctionTimer;
+import io.micrometer.core.instrument.HistogramSnapshot;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.ValueAtPercentile;
 import io.micrometer.core.instrument.step.StepMeterRegistry;
 import io.micrometer.core.instrument.step.StepRegistryConfig;
 import org.cloudfoundry.metrics.CloudFoundryMetricWriterProperties;
@@ -27,15 +31,20 @@ import org.cloudfoundry.metrics.Metric;
 import org.cloudfoundry.metrics.MetricPublisher;
 import org.cloudfoundry.metrics.Type;
 
+import java.text.DecimalFormat;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.stream.StreamSupport.stream;
 
 final class MicrometerMetricWriter extends StepMeterRegistry {
+
+    private static final DecimalFormat PERCENTILE_FORMAT = new DecimalFormat("#.####");
 
     private final MetricPublisher metricPublisher;
 
@@ -54,20 +63,73 @@ final class MicrometerMetricWriter extends StepMeterRegistry {
     @Override
     protected void publish() {
         List<Metric> metrics = getMeters().stream()
-            .flatMap(meter -> stream(meter.measure().spliterator(), false)
-                .map(measurement -> toMetric(meter, measurement)))
+            .flatMap(meter -> {
+                if (meter instanceof DistributionSummary) {
+                    return getMetrics((DistributionSummary) meter);
+                } else if (meter instanceof FunctionTimer) {
+                    return getMetrics((FunctionTimer) meter);
+                } else if (meter instanceof Timer) {
+                    return getMetrics((Timer) meter);
+                } else {
+                    return getMetrics(meter);
+                }
+            })
             .collect(Collectors.toList());
 
         this.metricPublisher.publish(metrics);
     }
 
-    private Metric toMetric(Meter meter, Measurement measurement) {
-        Meter.Id id = meter.getId().withTag(measurement.getStatistic());
+    private Stream<Metric> getMetrics(DistributionSummary meter) {
+        return getMetrics(meter, meter.takeSnapshot(false));
+    }
 
+    private Stream<Metric> getMetrics(FunctionTimer meter) {
+        return Stream.of(
+            toMetric(withStatistic(meter, "count"), meter.count()),
+            toMetric(withStatistic(meter, "mean"), meter.mean(getBaseTimeUnit())),
+            toMetric(withStatistic(meter, "totalTime"), meter.totalTime(getBaseTimeUnit()))
+        );
+    }
+
+    private Stream<Metric> getMetrics(Timer meter) {
+        return getMetrics(meter, meter.takeSnapshot(false));
+    }
+
+    private Stream<Metric> getMetrics(Meter meter, HistogramSnapshot snapshot) {
+        return Stream.concat(
+            Stream.of(
+                toMetric(withStatistic(meter, "count"), snapshot.count()),
+                toMetric(withStatistic(meter, "max"), snapshot.max(getBaseTimeUnit())),
+                toMetric(withStatistic(meter, "mean"), snapshot.mean(getBaseTimeUnit())),
+                toMetric(withStatistic(meter, "totalTime"), snapshot.total(getBaseTimeUnit()))
+            ),
+            getMetrics(meter, snapshot.percentileValues())
+        );
+    }
+
+    private Stream<Metric> getMetrics(Meter meter, ValueAtPercentile[] percentiles) {
+        return Arrays.stream(percentiles)
+            .map(percentile -> toMetric(withPercentile(meter, percentile), percentile.value(getBaseTimeUnit())));
+    }
+
+    private Stream<Metric> getMetrics(Meter meter) {
+        return stream(meter.measure().spliterator(), false)
+            .map(measurement -> toMetric(meter.getId().withTag(measurement.getStatistic()), measurement.getValue()));
+    }
+
+    private Metric toMetric(Meter.Id id, double value) {
         Map<String, String> tags = stream(id.getTags().spliterator(), false)
             .collect(Collectors.toMap(Tag::getKey, Tag::getValue));
 
-        return new Metric(id.getName(), tags, this.clock.wallTime(), Type.GAUGE, id.getBaseUnit(), measurement.getValue());
+        return new Metric(id.getName(), tags, this.clock.wallTime(), Type.GAUGE, id.getBaseUnit(), value);
+    }
+
+    private Meter.Id withPercentile(Meter meter, ValueAtPercentile percentile) {
+        return withStatistic(meter, String.format("%spercentile", PERCENTILE_FORMAT.format(percentile.percentile() * 100)));
+    }
+
+    private Meter.Id withStatistic(Meter meter, String type) {
+        return meter.getId().withTag(Tag.of("statistic", type));
     }
 
     private static final class MicrometerMetricWriterConfig implements StepRegistryConfig {
