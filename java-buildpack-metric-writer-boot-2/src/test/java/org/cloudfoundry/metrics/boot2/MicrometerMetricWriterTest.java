@@ -73,11 +73,11 @@ public final class MicrometerMetricWriterTest {
             getMetric(1, "count", "milliseconds"),
             getMetric(1, "mean", "milliseconds"),
             getMetric(1, "totalTime", "milliseconds"),
-            getMetric(2, "count"),
-            getMetric(2, "max"),
-            getMetric(2, "mean"),
-            getMetric(2, "totalTime"),
-            getMetric(2, "50percentile"),
+            getMetric(2, "count", "milliseconds"),
+            getMetric(2, "max", "milliseconds"),
+            getMetric(2, "mean", "milliseconds"),
+            getMetric(2, "totalTime", "milliseconds"),
+            getMetric(2, "50percentile", "milliseconds"),
             getMetric(3, "value")
         );
     }
