@@ -142,12 +142,12 @@ final class MicrometerMetricWriter extends StepMeterRegistry {
 
         @Override
         public String get(String k) {
-            throw new UnsupportedOperationException();
+            return null;
         }
 
         @Override
         public String prefix() {
-            throw new UnsupportedOperationException();
+            return "";
         }
 
         @Override

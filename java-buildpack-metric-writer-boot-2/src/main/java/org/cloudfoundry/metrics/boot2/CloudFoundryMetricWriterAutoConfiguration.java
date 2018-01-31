@@ -21,7 +21,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.cloudfoundry.metrics.CloudFoundryMetricWriterProperties;
 import org.cloudfoundry.metrics.MetricPublisher;
 import org.springframework.boot.actuate.autoconfigure.metrics.MetricsAutoConfiguration;
-import org.springframework.boot.actuate.autoconfigure.metrics.export.MetricsExporter;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnCloudPlatform;
@@ -40,8 +39,8 @@ import org.springframework.context.annotation.Configuration;
 class CloudFoundryMetricWriterAutoConfiguration {
 
     @Bean
-    MetricsExporter metricWriter(MetricPublisher metricPublisher, CloudFoundryMetricWriterProperties properties) {
-        return () -> new MicrometerMetricWriter(Clock.SYSTEM, metricPublisher, properties);
+    MicrometerMetricWriter metricWriter(Clock clock, MetricPublisher metricPublisher, CloudFoundryMetricWriterProperties properties) {
+        return new MicrometerMetricWriter(clock, metricPublisher, properties);
     }
 
 }
