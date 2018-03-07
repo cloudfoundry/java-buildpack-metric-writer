@@ -25,7 +25,7 @@
 
     <groupId>org.cloudfoundry</groupId>
     <artifactId>java-buildpack-metric-writer-parent</artifactId>
-    <version>2.4.0.BUILD-SNAPSHOT</version>
+    <version>2.4.0.RELEASE</version>
     <packaging>pom</packaging>
 
     <properties>
