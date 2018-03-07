@@ -20,7 +20,7 @@ import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.MockClock;
 import io.micrometer.core.instrument.config.MeterFilter;
-import io.micrometer.core.instrument.histogram.HistogramConfig;
+import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
 import org.cloudfoundry.metrics.CloudFoundryMetricWriterProperties;
 import org.cloudfoundry.metrics.Metric;
 import org.cloudfoundry.metrics.Type;
@@ -45,8 +45,8 @@ public final class MicrometerMetricWriterTest {
         this.metricWriter.config().meterFilter(new MeterFilter() {
 
             @Override
-            public HistogramConfig configure(Meter.Id mappedId, HistogramConfig config) {
-                return HistogramConfig.builder()
+            public DistributionStatisticConfig configure(Meter.Id mappedId, DistributionStatisticConfig config) {
+                return DistributionStatisticConfig.builder()
                     .percentiles(0.50)
                     .build()
                     .merge(config);
