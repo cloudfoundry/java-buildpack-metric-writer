@@ -103,7 +103,7 @@ public final class MicrometerMetricWriterTest {
     }
 
     private static Metric getMetric(int index, String statistic, String unit) {
-        return new Metric(getName(index), Collections.singletonMap("statistic", statistic), 0L, Type.GAUGE, unit, 0.0);
+        return new Metric(getName(index), Collections.singletonMap("statistic", statistic), 1L, Type.GAUGE, unit, 0.0);
     }
 
     private static String getName(int index) {
