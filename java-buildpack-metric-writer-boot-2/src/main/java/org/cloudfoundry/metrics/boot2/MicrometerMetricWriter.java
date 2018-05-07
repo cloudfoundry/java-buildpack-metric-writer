@@ -80,7 +80,7 @@ final class MicrometerMetricWriter extends StepMeterRegistry {
     }
 
     private Stream<Metric> getMetrics(DistributionSummary meter) {
-        return getMetrics(meter, meter.takeSnapshot(false));
+        return getMetrics(meter, meter.takeSnapshot());
     }
 
     private Stream<Metric> getMetrics(FunctionTimer meter) {
@@ -92,7 +92,7 @@ final class MicrometerMetricWriter extends StepMeterRegistry {
     }
 
     private Stream<Metric> getMetrics(Timer meter) {
-        return getMetrics(meter, meter.takeSnapshot(false));
+        return getMetrics(meter, meter.takeSnapshot());
     }
 
     private Stream<Metric> getMetrics(Meter meter, HistogramSnapshot snapshot) {
@@ -118,7 +118,7 @@ final class MicrometerMetricWriter extends StepMeterRegistry {
     }
 
     private Metric toMetric(Meter.Id id, double value) {
-        Map<String, String> tags = stream(id.getTags().spliterator(), false)
+        Map<String, String> tags = id.getTags().stream()
             .collect(Collectors.toMap(Tag::getKey, Tag::getValue));
 
         return new Metric(id.getName(), tags, this.clock.wallTime(), Type.GAUGE, id.getBaseUnit(), value);
