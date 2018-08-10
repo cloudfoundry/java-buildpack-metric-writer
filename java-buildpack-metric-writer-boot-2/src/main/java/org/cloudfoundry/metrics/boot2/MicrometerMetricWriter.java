@@ -36,6 +36,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -63,6 +64,7 @@ final class MicrometerMetricWriter extends StepMeterRegistry {
     @Override
     protected void publish() {
         List<Metric> metrics = getMeters().stream()
+            .peek(m -> System.out.println(m.getId()))
             .flatMap(meter -> {
                 if (meter instanceof DistributionSummary) {
                     return getMetrics((DistributionSummary) meter);
@@ -74,6 +76,7 @@ final class MicrometerMetricWriter extends StepMeterRegistry {
                     return getMetrics(meter);
                 }
             })
+            .filter(Objects::nonNull)
             .collect(Collectors.toList());
 
         this.metricPublisher.publish(metrics);
@@ -118,6 +121,10 @@ final class MicrometerMetricWriter extends StepMeterRegistry {
     }
 
     private Metric toMetric(Meter.Id id, double value) {
+        if (Double.isNaN(value)) {
+            return null;
+        }
+
         Map<String, String> tags = id.getTags().stream()
             .collect(Collectors.toMap(Tag::getKey, Tag::getValue));
 

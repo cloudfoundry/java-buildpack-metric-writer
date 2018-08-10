@@ -27,6 +27,8 @@ import org.cloudfoundry.metrics.Type;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -61,14 +63,17 @@ public final class MicrometerMetricWriterTest {
         addFunctionTimer(1, this.metricWriter);
         addTimer(2, this.metricWriter);
         addMeter(3, this.metricWriter);
+        addMeter(4, this.metricWriter, Double.NaN);
 
         this.metricWriter.publish();
 
-        assertThat(this.metricPublisher.getMetrics()).contains(
+        assertThat(this.metricPublisher.getMetrics()).containsOnly(
             getMetric(0, "count"),
             getMetric(0, "max"),
             getMetric(0, "mean"),
+            getMetric(0, "mean"),
             getMetric(0, "totalTime"),
+            getPercentileMetric(0, "value"),
             getMetric(0, "50percentile"),
             getMetric(1, "count", "milliseconds"),
             getMetric(1, "mean", "milliseconds"),
@@ -78,6 +83,7 @@ public final class MicrometerMetricWriterTest {
             getMetric(2, "mean", "milliseconds"),
             getMetric(2, "totalTime", "milliseconds"),
             getMetric(2, "50percentile", "milliseconds"),
+            getPercentileMetric(2, "value"),
             getMetric(3, "value")
         );
     }
@@ -91,7 +97,11 @@ public final class MicrometerMetricWriterTest {
     }
 
     private static void addMeter(int index, MeterRegistry meterRegistry) {
-        meterRegistry.gauge(getName(index), 0);
+        addMeter(index, meterRegistry, 0);
+    }
+
+    private static void addMeter(int index, MeterRegistry meterRegistry, Number value) {
+        meterRegistry.gauge(getName(index), value);
     }
 
     private static void addTimer(int index, MeterRegistry meterRegistry) {
@@ -110,12 +120,20 @@ public final class MicrometerMetricWriterTest {
         return String.format("test-metric-%d", index);
     }
 
-    private static String getTagKey(int index) {
-        return String.format("test-metric-%d-key", index);
+    private static Metric getPercentileMetric(int index, String statistic) {
+        return getPercentileMetric(index, statistic, null);
     }
 
-    private static String getTagValue(int index) {
-        return String.format("test-metric-%d-value", index);
+    private static Metric getPercentileMetric(int index, String statistic, String unit) {
+        Map<String, String> tags = new HashMap<>(2);
+        tags.put("statistic", statistic);
+        tags.put("phi", "0.5");
+
+        return new Metric(getPercentileName(index), tags, 1L, Type.GAUGE, unit, 0.0);
+    }
+
+    private static String getPercentileName(int index) {
+        return String.format("test-metric-%d.percentile", index);
     }
 
 }
