@@ -23,4 +23,12 @@
       <module name="java-buildpack-metric-writer-parent" target="1.5" />
     </bytecodeTargetLevel>
   </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="java-buildpack-metric-writer" options="-Werror -Xlint:all -Xlint:-options -Xlint:-processing" />
+      <module name="java-buildpack-metric-writer-boot-1" options="-Werror -Xlint:all -Xlint:-options -Xlint:-processing" />
+      <module name="java-buildpack-metric-writer-boot-2" options="-Werror -Xlint:all -Xlint:-options -Xlint:-processing" />
+      <module name="java-buildpack-metric-writer-common" options="-Werror -Xlint:all -Xlint:-options -Xlint:-processing" />
+    </option>
+  </component>
 </project>
