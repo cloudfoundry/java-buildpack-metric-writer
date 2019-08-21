@@ -19,7 +19,11 @@ package org.cloudfoundry.metrics;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.config.MeterFilter;
-import org.springframework.core.env.Environment;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.logging.Logger;
 
 final class CloudFoundryTagsMeterFilter implements MeterFilter {
 
@@ -59,6 +63,20 @@ final class CloudFoundryTagsMeterFilter implements MeterFilter {
         this.organization = organization != null ? Tag.of(ORGANIZATION, organization) : null;
         this.space = space != null ? Tag.of(SPACE, space) : null;
         this.version = version != null ? Tag.of(VERSION, version) : null;
+
+        Logger.getLogger(this.getClass().getName()).info(() -> {
+            List<String> values = new ArrayList<>(7);
+
+            for (Tag tag : Arrays.asList(this.account, this.application, this.cluster, this.instanceIndex, this.organization, this.space, this.version)) {
+                if (tag == null) {
+                    continue;
+                }
+
+                values.add(String.format("%s=%s", tag.getKey(), tag.getValue()));
+            }
+
+            return String.format("Adding CloudFoundry Micrometer tags if not otherwise specified: %s", String.join(", ", values));
+        });
     }
 
     @Override

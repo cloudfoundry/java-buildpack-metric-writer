@@ -21,8 +21,6 @@ import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 final class CloudFoundryTagsMeterFilterTest {
@@ -42,8 +40,7 @@ final class CloudFoundryTagsMeterFilterTest {
         Meter.Id id = new CloudFoundryTagsMeterFilter("test-account", "test-application", "test-cluster", "test-instance-index", "test-organization", "test-space", "test-version")
             .map(new Meter.Id("test", originalTags, null, null, Meter.Type.GAUGE));
 
-        List<Tag> tags = id.getTags();
-        assertThat(tags).containsExactly(
+        assertThat(id.getTags()).containsExactly(
             Tag.of("cf.account", "test-account-original"),
             Tag.of("cf.application", "test-application-original"),
             Tag.of("cf.cluster", "test-cluster-original"),
@@ -67,8 +64,7 @@ final class CloudFoundryTagsMeterFilterTest {
         Meter.Id id = new CloudFoundryTagsMeterFilter("test-account", "test-application", "test-cluster", "test-instance-index", "test-organization", "test-space", "test-version")
             .map(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.GAUGE));
 
-        List<Tag> tags = id.getTags();
-        assertThat(tags).containsExactly(
+        assertThat(id.getTags()).containsExactly(
             Tag.of("cf.account", "test-account"),
             Tag.of("cf.application", "test-application"),
             Tag.of("cf.cluster", "test-cluster"),
