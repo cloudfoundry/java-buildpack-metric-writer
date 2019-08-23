@@ -74,4 +74,23 @@ final class CloudFoundryTagsMeterFilterAutoConfigurationTest {
             Tag.of("cf.version", "42")
         );
     }
+
+    @Test
+    void defaultsWithoutOrganizationName() {
+        Meter.Id id = new CloudFoundryTagsMeterFilterAutoConfiguration().meterFilter(new MockEnvironment()
+            .withProperty("cf.instance.index", "test-instance-index")
+            .withProperty("vcap.application.cf_api", "test-cf-api")
+            .withProperty("vcap.application.application_name", "test.application-r042")
+            .withProperty("vcap.application.space_name", "test-space-name")
+        ).map(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.GAUGE));
+
+        assertThat(id.getTags()).containsExactly(
+            Tag.of("cf.account", "test-cf-api"),
+            Tag.of("cf.application", "test.application"),
+            Tag.of("cf.cluster", "test.application-r042"),
+            Tag.of("cf.instance.index", "test-instance-index"),
+            Tag.of("cf.space", "test-space-name"),
+            Tag.of("cf.version", "42")
+        );
+    }
 }

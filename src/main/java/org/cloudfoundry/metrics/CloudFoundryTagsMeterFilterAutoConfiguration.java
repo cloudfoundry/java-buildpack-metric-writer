@@ -96,7 +96,7 @@ class CloudFoundryTagsMeterFilterAutoConfiguration {
             return organization;
         }
 
-        return environment.getRequiredProperty("vcap.application.organization_name");
+        return environment.getProperty("vcap.application.organization_name");
     }
 
     private String getSpace(Environment environment) {
