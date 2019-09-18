@@ -56,7 +56,7 @@ class CloudFoundryTagsMeterFilterAutoConfiguration {
             return account;
         }
 
-        return environment.getRequiredProperty("vcap.application.cf_api");
+        return environment.getProperty("vcap.application.cf_api");
     }
 
     private String getApplication(Environment environment, Names names) {
@@ -83,11 +83,11 @@ class CloudFoundryTagsMeterFilterAutoConfiguration {
             return instanceIndex;
         }
 
-        return environment.getRequiredProperty("cf.instance.index");
+        return environment.getProperty("cf.instance.index");
     }
 
     private Names getNames(Environment environment) {
-        return Names.parseName(environment.getRequiredProperty("vcap.application.application_name"));
+        return Names.parseName(environment.getProperty("vcap.application.application_name"));
     }
 
     private String getOrganization(Environment environment) {
@@ -105,7 +105,7 @@ class CloudFoundryTagsMeterFilterAutoConfiguration {
             return space;
         }
 
-        return environment.getRequiredProperty("vcap.application.space_name");
+        return environment.getProperty("vcap.application.space_name");
     }
 
     private String getVersion(Environment environment, Names names) {
