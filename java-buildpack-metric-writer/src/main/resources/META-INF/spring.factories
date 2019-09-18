@@ -1,4 +1,0 @@
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-org.cloudfoundry.metrics.CloudFoundryMetricWriterAutoConfiguration,\
-org.cloudfoundry.metrics.boot1.CloudFoundryMetricWriterAutoConfiguration,\
-org.cloudfoundry.metrics.boot2.CloudFoundryMetricWriterAutoConfiguration
