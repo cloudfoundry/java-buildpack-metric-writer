@@ -28,7 +28,7 @@ final class CloudFoundryTagsMeterFilterAutoConfigurationTest {
 
     @Test
     void configured() {
-        Meter.Id id = new CloudFoundryTagsMeterFilterAutoConfiguration().meterFilter(new MockEnvironment()
+        Meter.Id id = new CloudFoundryTagsMeterFilterAutoConfiguration().cloudFoundryMeterFilter(new MockEnvironment()
             .withProperty("cf.instance.index", "test-instance-index")
             .withProperty("vcap.application.cf_api", "test-cf-api")
             .withProperty("vcap.application.application_name", "test.application-r042")
@@ -56,7 +56,7 @@ final class CloudFoundryTagsMeterFilterAutoConfigurationTest {
 
     @Test
     void emptyEnvironment() {
-        Meter.Id id = new CloudFoundryTagsMeterFilterAutoConfiguration().meterFilter(new MockEnvironment())
+        Meter.Id id = new CloudFoundryTagsMeterFilterAutoConfiguration().cloudFoundryMeterFilter(new MockEnvironment())
             .map(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.GAUGE));
 
         assertThat(id.getTags()).isEmpty();
@@ -64,7 +64,7 @@ final class CloudFoundryTagsMeterFilterAutoConfigurationTest {
 
     @Test
     void extractFromName() {
-        Meter.Id id = new CloudFoundryTagsMeterFilterAutoConfiguration().meterFilter(new MockEnvironment()
+        Meter.Id id = new CloudFoundryTagsMeterFilterAutoConfiguration().cloudFoundryMeterFilter(new MockEnvironment()
             .withProperty("vcap.application.application_name", "test.application-r042")
         ).map(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.GAUGE));
 

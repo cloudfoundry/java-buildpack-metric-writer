@@ -36,7 +36,7 @@ class CloudFoundryTagsMeterFilterAutoConfiguration {
 
     @Bean
     @Order
-    MeterFilter meterFilter(Environment environment) {
+    MeterFilter cloudFoundryMeterFilter(Environment environment) {
         Names names = getNames(environment);
 
         return new CloudFoundryTagsMeterFilter(
