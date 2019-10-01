@@ -29,7 +29,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 
 @AutoConfigureBefore(MetricsAutoConfiguration.class)
-@ConditionalOnClass(MeterFilter.class)
+@ConditionalOnClass(value={MeterFilter.class, MetricsAutoConfiguration.class})
 @ConditionalOnCloudPlatform(CloudPlatform.CLOUD_FOUNDRY)
 @Configuration
 class CloudFoundryTagsMeterFilterAutoConfiguration {
